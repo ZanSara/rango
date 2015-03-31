@@ -1,12 +1,9 @@
-#from django.shortcuts import render
+from django.shortcuts import render
 from django.http import HttpResponse
 
 def index(request):
-    return HttpResponse("""Rango says Hello World!
-			<br>
-			<br>
-			<a href='/rango/about'>About</a>
-			""")
+    template_dict={'boldmessage':'I am from the dictionary'}
+    return render(request, 'rango/index.html', template_dict)
 
 def about(request):
     return HttpResponse("""What about Rango?
