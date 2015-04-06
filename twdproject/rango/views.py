@@ -1,7 +1,9 @@
 from django.shortcuts import render
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
 from rango.models import Category, Page
-from rango.forms import CategoryForm, PageForm
+from rango.forms import CategoryForm, PageForm, UserForm, UserProfileForm
 
 def index(request):
     category_list = Category.objects.order_by('-likes')[:5]
@@ -29,7 +31,7 @@ def category(request, category_name_slug):
 	pass
     return render(request, 'rango/category.html', template_context)
 
-
+@login_required
 def add_category(request):
     if request.method == 'POST':
 	form = CategoryForm(request.POST)
@@ -45,6 +47,7 @@ def add_category(request):
     # Render the form page
     return render(request, 'rango/add_category.html', {'form':form})
 
+@login_required
 def add_page(request, category_name_slug):
     try:
 	sel_category = Category.objects.get(slug=category_name_slug)
@@ -65,3 +68,54 @@ def add_page(request, category_name_slug):
 	form = PageForm()
     template_context = {'form':form, 'category':sel_category}
     return render(request, 'rango/add_page.html', template_context)
+
+def register(request):
+    registered = False
+    if request.method == 'POST':
+	user_form = UserForm(data=request.POST)
+	profile_form = UserProfileForm(data=request.POST)
+	if user_form.is_valid() and profile_form.is_valid():
+	    user = user_form.save()
+	    #Here we hash the password with set_password()
+	    user.set_password(user.password)
+	    user.save()
+	    # commit=False is used when we need to set the attributes
+	    # before writing into the database
+	    profile = profile_form.save(commit=False)
+	    profile.user = user
+	    if 'picture' in request.FILES:
+		profile.picture = request.FILES['picture']
+	    profile.save()
+	    # Registration successful
+	    registered = True
+	else:
+	    print user_form.errors, profile_form.errors
+    else:
+	user_form = UserForm()
+	profile_form = UserProfileForm()
+    return render(request, 'rango/register.html', {'user_form':user_form, 'profile_form':profile_form, 'registered':registered})
+
+
+def user_login(request):
+    if request.method == 'POST':
+	username = request.POST.get('username')
+	password = request.POST.get('password')
+	user = authenticate(username=username, password=password)
+	# If the login fails, user = None
+	if user:
+	    if user.is_active:
+		login(request, user)
+		return HttpResponseRedirect('/rango/')
+	    else:
+		return HttpResponse('Your account has been disabled! Sorry...')
+	else:
+	    print 'Invalid login: {0}, {1}'.format(username, password)
+	    return render(request, 'rango/login.html', {error:'Invalid login details. Try again!'})
+    else:
+	return render(request, 'rango/login.html', {})
+
+
+@login_required
+def user_logout(request):
+    logout(request)
+    return HttpResponseRedirect('/rango/')
