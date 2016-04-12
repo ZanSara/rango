@@ -8,7 +8,7 @@ from rango.forms import CategoryForm, PageForm, UserForm, UserProfileForm
 def index(request):
     category_list = Category.objects.order_by('-likes')[:5]
     template_context={'categories':category_list}
-    return render(request, 'rango/index.html', template_context)
+    return render(request, 'rango/base.html', template_context)
 
 def about(request):
     return HttpResponse("""What about Rango?
